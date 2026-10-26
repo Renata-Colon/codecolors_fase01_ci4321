@@ -1,12 +1,13 @@
-// aquí importamos los tipos y la escena
+// main
+// importaciones
 import { EstadoJuego, PuntaCanon } from './tipos';
 import { configurarCamara, MatricesCamara } from './camara';
 import { ManejadorEntrada } from './entrada';
 import { MotorFisico } from './fisica';
-import { createFixedFunction } from './vendor/ff/ff'; // Librería del profe para el estado de dibujo
+import { createFixedFunction } from './vendor/ff/ff'; // librería del profe para el estado de dibujo
 import { EscenaGrafica } from './escena';
 
-// contrato escena
+// contrato de la escena
 export interface EscenaJuego {
   obtenerPuntaCanon: () => PuntaCanon;
   fijarTransformacionTorreta: (giro: number, inclinacion: number) => void;
@@ -16,7 +17,7 @@ export interface EscenaJuego {
   renderizar: (matrizVista: Float32Array, matrizProyeccion: Float32Array) => void;
 }
 
-// clase orquestadora (Lógica del juego)
+// clase orquestadora (lógica del juego)
 export class OrquestadorJuego {
   public estado: EstadoJuego;
   private matrices: MatricesCamara;
@@ -43,7 +44,7 @@ export class OrquestadorJuego {
         velocidad: [0, 0, 0],
         radio: 0.4,
       },
-      // mapeamos los objetivos que me devuelve la escena para tener su estado vivo
+      // mapeamos los objetivos que devuelve la escena para tener su estado vivo
       objetivos: this.escena.obtenerPosicionesObjetivos().map((t) => ({ ...t, vivo: true })),
     };
 
@@ -61,7 +62,7 @@ export class OrquestadorJuego {
     const dt = Math.min((ahora - this.ultimoTiempo) / 1000.0, this.DT_MAXIMO);
     this.ultimoTiempo = ahora;
 
-    // FASE 1: procesar entradas
+    // fase 1: procesar entradas
     this.entrada.procesarEntrada(dt);
     if (this.entrada.disparoSolicitado) {
       const punta = this.escena.obtenerPuntaCanon(); 
@@ -69,15 +70,15 @@ export class OrquestadorJuego {
       this.entrada.disparoSolicitado = false;
     }
 
-    // FASE 2: actualizar (física y estados)
+    // fase 2: actualizar (física y estado)
     this.fisica.actualizar(this.estado, dt);
 
-    // sincronizar: se pasan a la escena los nuevos valores para que dibuje en la posición correcta
+    // sincronizar: le pasa a la escena los nuevos valores para que dibuje en la posición correcta
     this.escena.fijarTransformacionTorreta(this.estado.giroTorreta, this.estado.inclinacionCanon);
     this.escena.fijarIndicadorFuerza(this.estado.nivelFuerza);
     this.escena.fijarTransformacionProyectil(this.estado.proyectil.posicion, this.estado.proyectil.activo);
 
-    // FASE 3: renderizar
+    // fase 3: renderizar
     this.escena.renderizar(
       this.matrices.vista as Float32Array,
       this.matrices.proyeccion as Float32Array
@@ -87,7 +88,7 @@ export class OrquestadorJuego {
   }
 }
 
-// inicializacion del juego  
+// inicialización del juego
 window.addEventListener('DOMContentLoaded', () => {
   const canvas = document.getElementById('game-canvas') as HTMLCanvasElement;
   
@@ -95,19 +96,23 @@ window.addEventListener('DOMContentLoaded', () => {
   canvas.width = window.innerWidth;
   canvas.height = window.innerHeight;
 
-  // obtener contexto WebGL2 (para usar VAOs nativos)
+  // obtener contexto webgl2, esto es obligatorio para usar vaos nativos
   const gl = canvas.getContext('webgl2');
   if (!gl) {
-    alert('Tu navegador no soporta WebGL2');
+    alert('tu navegador no soporta webgl2');
     return;
   }
 
-  // crear la instancia de FixedFunction
+  // crear la instancia de fixedfunction
   const ff = createFixedFunction(gl);
 
-  // pasamos gl y ff a la escena 3
+  // pasamos gl y ff a la escena para vaos y colores
   const escena = new EscenaGrafica(gl, ff);
-  const juego = new OrquestadorJuego(canvas, escena);
   
-  juego.iniciar();
+  // acá exponemos 'juego' para poder probar desde la consola del navegador
+  (window as any).juego = new OrquestadorJuego(canvas, escena);
+  
+  (window as any).juego.iniciar();
 });
+
+
