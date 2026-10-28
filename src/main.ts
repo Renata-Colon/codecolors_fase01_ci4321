@@ -35,7 +35,7 @@ export class OrquestadorJuego {
 
     // estado inicial del juego
     this.estado = {
-      giroTorreta: 0,
+      desplazamientoX: 0, // <-- Cambiado de giroTorreta: 0
       inclinacionCanon: 30,
       nivelFuerza: 1,
       proyectil: {
@@ -74,7 +74,7 @@ export class OrquestadorJuego {
     this.fisica.actualizar(this.estado, dt);
 
     // sincronizar: le pasa a la escena los nuevos valores para que dibuje en la posición correcta
-    this.escena.fijarTransformacionTorreta(this.estado.giroTorreta, this.estado.inclinacionCanon);
+    this.escena.fijarTransformacionTorreta(this.estado.desplazamientoX, this.estado.inclinacionCanon);
     this.escena.fijarIndicadorFuerza(this.estado.nivelFuerza);
     this.escena.fijarTransformacionProyectil(this.estado.proyectil.posicion, this.estado.proyectil.activo);
 

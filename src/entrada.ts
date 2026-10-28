@@ -34,24 +34,29 @@ export class ManejadorEntrada {
   public procesarEntrada(dt: number): void {
     if (!this.referenciaEstado) return;
     
-    const VELOCIDAD_GIRO = 50;   // grados / segundo
-    const VELOCIDAD_INCLINACION = 40; // grados / segundo
+    //const VELOCIDAD_GIRO = 50;   // grados / segundo
+    const VELOCIDAD_INCLINACION = 30; // grados / segundo
 
-    // Rotacion Horizontal (A / D o Flechas) dentro de limites (-60 a 60)
+    // Desplazamiento Horizontal (A / D o Flechas)
+    const VELOCIDAD_MOVIMIENTO = 8;  
+
     if (this.teclas['KeyA'] || this.teclas['ArrowLeft']) {
-      this.referenciaEstado.giroTorreta = Math.min(60, this.referenciaEstado.giroTorreta + VELOCIDAD_GIRO * dt);
+       this.referenciaEstado.desplazamientoX -= VELOCIDAD_MOVIMIENTO * dt;
     }
     if (this.teclas['KeyD'] || this.teclas['ArrowRight']) {
-      this.referenciaEstado.giroTorreta = Math.max(-60, this.referenciaEstado.giroTorreta - VELOCIDAD_GIRO * dt);
+       this.referenciaEstado.desplazamientoX += VELOCIDAD_MOVIMIENTO * dt;
     }
+
+    // Límite estricto absoluto para que NUNCA pase de -60 ni de 60
+    this.referenciaEstado.desplazamientoX = Math.max(-10, Math.min(10, this.referenciaEstado.desplazamientoX));
 
     // Elevacion Vertical (W / S o Flechas) dentro de limites (5 a 90)
     if (this.teclas['KeyW'] || this.teclas['ArrowUp']) {
       this.referenciaEstado.inclinacionCanon = Math.min(90, this.referenciaEstado.inclinacionCanon + VELOCIDAD_INCLINACION * dt);
-    }
+	}
     if (this.teclas['KeyS'] || this.teclas['ArrowDown']) {
       this.referenciaEstado.inclinacionCanon = Math.max(5, this.referenciaEstado.inclinacionCanon - VELOCIDAD_INCLINACION * dt);
-    }
+	}
 
     // Alternar fuerza ciclicamente con la tecla F (1 -> 2 -> 3 -> 1)
     if (this.cambioFuerzaSolicitado) {

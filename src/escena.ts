@@ -27,7 +27,7 @@ export class EscenaGrafica implements EscenaJuego {
   private numIndicesIndicador: number[] = [];
 
   // estado visual actual que se actualiza desde main.ts
-  private giroTorretaRad = 0;
+  private desplazamientoX = 0; // Cambiado de giroTorretaRad a desplazamiento en X
   private inclinacionCanonRad = 30 * (Math.PI / 180); // arranca en 30 grados
   private nivelFuerzaActual: 1 | 2 | 3 = 1;
   private posicionProyectil: [number, number, number] = [0, 0, 0];
@@ -92,23 +92,22 @@ export class EscenaGrafica implements EscenaJuego {
   }
 
   public obtenerPuntaCanon(): PuntaCanon {
-    // en vez de hacer trigonometría a mano usamos las mismas matrices de transformación del renderizado
     const LARGO_CANON = 3.0;
     
-    const modelGiroY = mat4.create();
-    mat4.translate(modelGiroY, modelGiroY, [0, 1.0, 0]);
-    mat4.rotateY(modelGiroY, modelGiroY, this.giroTorretaRad);
+    // Cambiamos la rotación en Y por una traslación en X para el nodo principal
+    const modelDesplazamientoX = mat4.create();
+    mat4.translate(modelDesplazamientoX, modelDesplazamientoX, [this.desplazamientoX, 1.0, 0]);
 
-    const modelElevacion = mat4.clone(modelGiroY);
+    const modelElevacion = mat4.clone(modelDesplazamientoX);
     mat4.translate(modelElevacion, modelElevacion, [0, 0.5, 0.5]); // punto de pivote del cañón
-    mat4.rotateX(modelElevacion, modelElevacion, -this.inclinacionCanonRad); // - para que en vez de bajara, suba
+    mat4.rotateX(modelElevacion, modelElevacion, this.inclinacionCanonRad);
 
     // la punta en espacio local del cañón está en (0, 0, -LARGO_CANON)
     const puntaLocal = vec4.fromValues(0, 0, -LARGO_CANON, 1);
     const puntaMundo = vec4.create();
     vec4.transformMat4(puntaMundo, puntaLocal, modelElevacion);
 
-    // la dirección adelante es el vector -Z transformado (w=0 porque es una dirección, no un punto)
+    // la dirección adelante es el vector -Z transformado
     const dirLocal = vec4.fromValues(0, 0, -1, 0);
     const dirMundo = vec4.create();
     vec4.transformMat4(dirMundo, dirLocal, modelElevacion);
@@ -119,9 +118,9 @@ export class EscenaGrafica implements EscenaJuego {
     };
   }
 
-  // estos valores vienen en grados, aquí los convertimos a radianes
-  public fijarTransformacionTorreta(giro: number, inclinacion: number): void {
-    this.giroTorretaRad = giro * (Math.PI / 180);
+  // Recibe la posición en X directamente (ya no se convierte a radianes porque se desplaza, no rota)
+  public fijarTransformacionTorreta(desplazamiento: number, inclinacion: number): void {
+    this.desplazamientoX = desplazamiento;
     this.inclinacionCanonRad = inclinacion * (Math.PI / 180);
   }
 
@@ -146,61 +145,56 @@ export class EscenaGrafica implements EscenaJuego {
     // limpiar pantalla (azul cielo)
     this.gl.clearColor(0.53, 0.81, 0.92, 1.0);
     this.gl.clear(this.gl.COLOR_BUFFER_BIT | this.gl.DEPTH_BUFFER_BIT);
-    this.gl.enable(this.gl.DEPTH_TEST); // para que lo 3d se vea bien
+    this.gl.enable(this.gl.DEPTH_TEST);
 
-    // hay que pasarle las matrices de la cámara a ff
     this.ff.setProjectionMatrix(matrizProyeccion);
     this.ff.setViewMatrix(matrizVista);
 
-    // jerarquía de transformaciones
-    // suelo (matriz identidad que no se mueve)
+    // suelo
     this.ff.setModelMatrix(mat4.create());
     this.ff.setColor([0.55, 0.27, 0.07]);
     this.gl.bindVertexArray(this.vaoSuelo);
     this.ff.drawElements(this.gl.TRIANGLES, this.numIndicesSuelo, this.gl.UNSIGNED_SHORT, 0);
 
-    // base de la torreta que es fija
-    const modelBase = mat4.create();
-    mat4.translate(modelBase, modelBase, [0, 0.5, 0]);
+    // --- 1. Definimos primero el nodo de desplazamiento horizontal (Raíz de la máquina) ---
+    const modelDesplazamientoX = mat4.create();
+    mat4.translate(modelDesplazamientoX, modelDesplazamientoX, [this.desplazamientoX, 1.0, 0]);
+
+    // --- 2. Base de la torreta (Ahora clona el desplazamiento X para que toda la base se mueva con las teclas A y D) ---
+    const modelBase = mat4.clone(modelDesplazamientoX);
+    mat4.translate(modelBase, modelBase, [0, -0.5, 0]); 
     this.ff.setModelMatrix(modelBase);
     this.ff.setColor([0.25, 0.25, 0.25]);
     this.gl.bindVertexArray(this.vaoBaseTorreta);
     this.ff.drawElements(this.gl.TRIANGLES, this.numIndicesBase, this.gl.UNSIGNED_SHORT, 0);
 
-    // nodo de giro horizontal (este es el padre de la torreta superior y el cañón)
-    const modelGiroY = mat4.create();
-    mat4.translate(modelGiroY, modelGiroY, [0, 1.0, 0]);
-    mat4.rotateY(modelGiroY, modelGiroY, this.giroTorretaRad);
-
-    // torreta superior (hereda el giro Y)
-    this.ff.setModelMatrix(modelGiroY);
+    // --- 3. Torreta superior (hereda directamente el desplazamiento X) ---
+    this.ff.setModelMatrix(modelDesplazamientoX);
     this.ff.setColor([0.35, 0.35, 0.35]);
     this.gl.bindVertexArray(this.vaoTorretaSuperior);
     this.ff.drawElements(this.gl.TRIANGLES, this.numIndicesTorreta, this.gl.UNSIGNED_SHORT, 0);
 
-    // nodo de elevación (hijo del giro Y, aquí aplicamos la inclinación del cañón)
-    const modelElevacion = mat4.clone(modelGiroY);
+    // nodo de elevación (hijo del desplazamiento X)
+    const modelElevacion = mat4.clone(modelDesplazamientoX);
     mat4.translate(modelElevacion, modelElevacion, [0, 0.5, 0.5]); // pivote
-    mat4.rotateX(modelElevacion, modelElevacion, -this.inclinacionCanonRad);
+    mat4.rotateX(modelElevacion, modelElevacion, this.inclinacionCanonRad);
 
-    // cañón (hereda giro Y + elevación X)
+    // cañón
     this.ff.setModelMatrix(modelElevacion);
     this.ff.setColor([0.2, 0.2, 0.2]);
     this.gl.bindVertexArray(this.vaoCanon);
     this.ff.drawElements(this.gl.TRIANGLES, this.numIndicesCanon, this.gl.UNSIGNED_SHORT, 0);
 
-    // indicador de fuerza (también hijo de la elevación para que se mueva con el cañón)
+    // indicador de fuerza
     for (let i = 0; i < 3; i++) {
       const modelBarra = mat4.clone(modelElevacion);
-      // las apilamos con una pequeña separación
       mat4.translate(modelBarra, modelBarra, [0, 0.8 + i * 0.25, 0.2]); 
       this.ff.setModelMatrix(modelBarra);
       
-      // la barra de abajo (i=0) siempre está encendida porque el nivel mínimo es 1
       if (i < this.nivelFuerzaActual) {
-        this.ff.setColor([0.5, 1.0, 0.5]); // verde claro para encendidas
+        this.ff.setColor([0.5, 1.0, 0.5]); 
       } else {
-        this.ff.setColor([0.1, 0.4, 0.1]); // verde oscuro para apagadas
+        this.ff.setColor([0.1, 0.4, 0.1]); 
       }
       
       this.gl.bindVertexArray(this.vaoIndicador[i]);
@@ -210,16 +204,13 @@ export class EscenaGrafica implements EscenaJuego {
     // proyectil
     const modelProyectil = mat4.create();
     if (this.proyectilActivo) {
-      // si ya disparó, usamos la posición que calcula la física 
       mat4.translate(modelProyectil, modelProyectil, this.posicionProyectil);
     } else {
-      // si está en reposo, copiamos la matriz exacta del cañón y solo lo movemos a la punta en espacio local
-      // así la bala gira y se eleva junto al tubo sin desincronizarse
       mat4.copy(modelProyectil, modelElevacion);
-      mat4.translate(modelProyectil, modelProyectil, [0, 0, -3.0]); // -3.0 es el LARGO_CANON
+      mat4.translate(modelProyectil, modelProyectil, [0, 0, -3.0]); 
     }
     this.ff.setModelMatrix(modelProyectil);
-    this.ff.setColor([0.0, 0.0, 0.0]); // negro
+    this.ff.setColor([0.0, 0.0, 0.0]); 
     this.gl.bindVertexArray(this.vaoProyectil);
     this.ff.drawElements(this.gl.TRIANGLES, this.numIndicesProyectil, this.gl.UNSIGNED_SHORT, 0);
 
@@ -230,7 +221,7 @@ export class EscenaGrafica implements EscenaJuego {
         const modelObj = mat4.create();
         mat4.translate(modelObj, modelObj, pos);
         this.ff.setModelMatrix(modelObj);
-        this.ff.setColor([1.0, 0.4, 0.1]); // de un color anaranjado rojizo
+        this.ff.setColor([1.0, 0.4, 0.1]); 
         this.gl.bindVertexArray(this.vaoObjetivos[i]);
         this.ff.drawElements(this.gl.TRIANGLES, this.numIndicesObjetivos[i], this.gl.UNSIGNED_SHORT, 0);
       }
