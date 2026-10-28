@@ -1,4 +1,5 @@
 // geometría del juego
+
 // suelo
 export function crearSuelo() {
   const posiciones = new Float32Array([
@@ -9,52 +10,38 @@ export function crearSuelo() {
   return { posiciones, indices, numIndices: indices.length };
 }
 
-// base de la torreta
-// cilindro fijo en el suelo
-// usamos un loop para generar los vértices del círculo
+// la base de la torreta es un bloque rectangular 
 export function crearBaseTorreta() {
-  const radios = 1.5, altura = 1.0, segmentos = 16;
-  const posiciones: number[] = [];
-  const indices: number[] = [];
-  
-  for (let i = 0; i <= segmentos; i++) {
-    const theta = (i / segmentos) * Math.PI * 2;
-    const x = Math.cos(theta) * radios;
-    const z = Math.sin(theta) * radios;
-    posiciones.push(x, 0, z, x, altura, z); // guardamos base y tope
-  }
-  for (let i = 0; i < segmentos; i++) {
-    const a = i * 2, b = a + 1, c = a + 2, d = a + 3;
-    indices.push(a, b, c, b, d, c); // caras laterales en ccw
-  }
-  return { posiciones: new Float32Array(posiciones), indices: new Uint16Array(indices), numIndices: indices.length };
+  const w = 2.0, h = 1.0, d = 2.0; // ancho, alto, profundo
+  const posiciones = new Float32Array([
+    // cara frontal (-z, hacia los objetivos)
+    -w/2, 0, -d/2,   w/2, 0, -d/2,   w/2, h, -d/2,  -w/2, h, -d/2,
+    // cara trasera (+z, hacia la cámara)
+     w/2, 0,  d/2,  -w/2, 0,  d/2,  -w/2, h,  d/2,   w/2, h,  d/2,
+    // cara superior (+y)
+    -w/2, h, -d/2,   w/2, h, -d/2,   w/2, h,  d/2,  -w/2, h,  d/2,
+    // cara inferior (-y)
+    -w/2, 0,  d/2,   w/2, 0,  d/2,   w/2, 0, -d/2,  -w/2, 0, -d/2,
+    // cara derecha (+x)
+     w/2, 0, -d/2,   w/2, 0,  d/2,   w/2, h,  d/2,   w/2, h, -d/2,
+    // cara izquierda (-x)
+    -w/2, 0,  d/2,  -w/2, 0, -d/2,  -w/2, h, -d/2,  -w/2, h,  d/2
+  ]);
+  const indices = new Uint16Array([
+    0, 1, 2, 0, 2, 3, 4, 5, 6, 4, 6, 7, 8, 9, 10, 8, 10, 11,
+    12, 13, 14, 12, 14, 15, 16, 17, 18, 16, 18, 19, 20, 21, 22, 20, 22, 23
+  ]);
+  return { posiciones, indices, numIndices: indices.length };
 }
 
-// torreta superior
-// igual que la base pero más pequeña, es la que gira en horizontal
+// la torreta superior es una esfera que creamos con la funcion de más abajo
 export function crearTorretaSuperior() {
-  const radios = 1.2, altura = 0.8, segmentos = 16;
-  const posiciones: number[] = [];
-  const indices: number[] = [];
-  
-  for (let i = 0; i <= segmentos; i++) {
-    const theta = (i / segmentos) * Math.PI * 2;
-    const x = Math.cos(theta) * radios;
-    const z = Math.sin(theta) * radios;
-    posiciones.push(x, 0, z, x, altura, z);
-  }
-  for (let i = 0; i < segmentos; i++) {
-    const a = i * 2, b = a + 1, c = a + 2, d = a + 3;
-    indices.push(a, b, c, b, d, c);
-  }
-  return { posiciones: new Float32Array(posiciones), indices: new Uint16Array(indices), numIndices: indices.length };
+  return crearEsfera(0.75, 24, 24); 
 }
 
-// cañón
-// agregamos especie de "tapas" a los extremos para que no se vea feo
-// apunta en -z (hacia donde estan los objetivos)
+// el cañón es un cilindro con tapas 
 export function crearCanon() {
-  const radio = 0.3, largo = 3.0, segmentos = 12;
+  const radio = 0.2, largo = 2.0, segmentos = 12; 
   const posiciones: number[] = [];
   const indices: number[] = [];
   
@@ -100,9 +87,7 @@ export function crearCanon() {
   return { posiciones: new Float32Array(posiciones), indices: new Uint16Array(indices), numIndices: indices.length };
 }
 
-// esfera
-// la usamos tanto para la bala como para los objetivos
-// se genera con segmentos de latitud y longitud 
+// esfera, con funcion usada para la torreta superior, la bala y los objetivos
 export function crearEsfera(radio: number, segmentosLat: number = 16, segmentosLong: number = 16) {
   const posiciones: number[] = [];
   const indices: number[] = [];
@@ -135,12 +120,14 @@ export function crearEsfera(radio: number, segmentosLat: number = 16, segmentosL
   return { posiciones: new Float32Array(posiciones), indices: new Uint16Array(indices), numIndices: indices.length };
 }
 
-// barra del indicador de fuerza
+// barra del indicador de fuerza hecha con paralelogramos
 export function crearBarraIndicador() {
-  const w = 0.4, h = 0.15;
+  const w = 0.8, h = 0.15, skew = 0.2; 
+  const offset = skew / 2; // compensamos para que el centro visual sea X=0
+  
   const posiciones = new Float32Array([
-    0, 0, 0,    w, 0, 0,    w, h, 0,
-    0, 0, 0,    w, h, 0,    0, h, 0
+    -w/2 - offset, 0, 0,          w/2 - offset, 0, 0,          w/2 + offset, h, 0,
+    -w/2 - offset, 0, 0,          w/2 + offset, h, 0,          -w/2 + offset, h, 0
   ]);
   const indices = new Uint16Array([0, 1, 2, 3, 4, 5]);
   return { posiciones, indices, numIndices: indices.length };

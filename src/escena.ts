@@ -27,12 +27,16 @@ export class EscenaGrafica implements EscenaJuego {
   private numIndicesIndicador: number[] = [];
 
   // estado visual actual que se actualiza desde main.ts
-  private desplazamientoX = 0; // Cambiado de giroTorretaRad a desplazamiento en X
+  private desplazamientoX = 0; 
   private inclinacionCanonRad = 30 * (Math.PI / 180); // arranca en 30 grados
   private nivelFuerzaActual: 1 | 2 | 3 = 1;
   private posicionProyectil: [number, number, number] = [0, 0, 0];
   private proyectilActivo = false;
   private objetivosVivos = [true, true, true];
+
+  // colores de la torreta (la superior un poco más clara para diferenciarla)
+  private readonly colorTanque: [number, number, number] = [0.3, 0.3, 0.3];
+  private readonly colorDomo: [number, number, number] = [0.45, 0.45, 0.45];
 
   constructor(gl: WebGL2RenderingContext, ff: any) {
     this.gl = gl;
@@ -58,32 +62,39 @@ export class EscenaGrafica implements EscenaJuego {
 
   private inicializarGeometria() {
     // aquí llamamos a las funciones de geometria.ts y guardamos los vaos
+    // suelo
     const suelo = geo.crearSuelo();
     this.vaoSuelo = this.crearVAO(suelo.posiciones, suelo.indices);
     this.numIndicesSuelo = suelo.numIndices;
 
+    // base
     const base = geo.crearBaseTorreta();
     this.vaoBaseTorreta = this.crearVAO(base.posiciones, base.indices);
     this.numIndicesBase = base.numIndices;
 
+    // torreta superior
     const torreta = geo.crearTorretaSuperior();
     this.vaoTorretaSuperior = this.crearVAO(torreta.posiciones, torreta.indices);
     this.numIndicesTorreta = torreta.numIndices;
 
+    // cañon
     const canon = geo.crearCanon();
     this.vaoCanon = this.crearVAO(canon.posiciones, canon.indices);
     this.numIndicesCanon = canon.numIndices;
 
-    const proyectil = geo.crearEsfera(0.25, 12, 12); // esfera chiquita para la bala
+    // bala
+    const proyectil = geo.crearEsfera(0.25, 20, 20); 
     this.vaoProyectil = this.crearVAO(proyectil.posiciones, proyectil.indices);
     this.numIndicesProyectil = proyectil.numIndices;
 
+    // esferas objetivo
     for (let i = 0; i < 3; i++) {
-      const obj = geo.crearEsfera(0.8, 12, 12); // esferas más grandes para los objetivos
+      const obj = geo.crearEsfera(0.8, 24, 24); // esferas suaves para los objetivos
       this.vaoObjetivos.push(this.crearVAO(obj.posiciones, obj.indices));
       this.numIndicesObjetivos.push(obj.numIndices);
     }
 
+    // indicador de fuerza
     for (let i = 0; i < 3; i++) {
       const barra = geo.crearBarraIndicador();
       this.vaoIndicador.push(this.crearVAO(barra.posiciones, barra.indices));
@@ -92,14 +103,15 @@ export class EscenaGrafica implements EscenaJuego {
   }
 
   public obtenerPuntaCanon(): PuntaCanon {
-    const LARGO_CANON = 3.0;
+    const LARGO_CANON = 2.0; 
     
-    // Cambiamos la rotación en Y por una traslación en X para el nodo principal
+    // lógica de desplazamiento en X
     const modelDesplazamientoX = mat4.create();
     mat4.translate(modelDesplazamientoX, modelDesplazamientoX, [this.desplazamientoX, 1.0, 0]);
 
+    // el cañón está en el frente de la torreta superior
     const modelElevacion = mat4.clone(modelDesplazamientoX);
-    mat4.translate(modelElevacion, modelElevacion, [0, 0.5, 0.5]); // punto de pivote del cañón
+    mat4.translate(modelElevacion, modelElevacion, [0, 0.5, -0.75]); 
     mat4.rotateX(modelElevacion, modelElevacion, this.inclinacionCanonRad);
 
     // la punta en espacio local del cañón está en (0, 0, -LARGO_CANON)
@@ -118,7 +130,7 @@ export class EscenaGrafica implements EscenaJuego {
     };
   }
 
-  // Recibe la posición en X directamente (ya no se convierte a radianes porque se desplaza, no rota)
+  // recibe la posición en X directamente
   public fijarTransformacionTorreta(desplazamiento: number, inclinacion: number): void {
     this.desplazamientoX = desplazamiento;
     this.inclinacionCanonRad = inclinacion * (Math.PI / 180);
@@ -133,6 +145,13 @@ export class EscenaGrafica implements EscenaJuego {
     this.proyectilActivo = activo;
   }
 
+    // método para que la escena se entere cuando la física destruye un objetivo ---nuevoo
+  public actualizarObjetivos(objetivos: any[]): void {
+    for (let i = 0; i < 3; i++) {
+      this.objetivosVivos[i] = objetivos[i].vivo;
+    }
+  }
+
   public obtenerPosicionesObjetivos(): { id: number; posicion: [number, number, number]; radio: number }[] {
     return [
       { id: 1, posicion: [4, 1.5, -8], radio: 0.8 },
@@ -141,6 +160,7 @@ export class EscenaGrafica implements EscenaJuego {
     ];
   }
 
+  // renderizado
   public renderizar(matrizVista: Float32Array, matrizProyeccion: Float32Array): void {
     // limpiar pantalla (azul cielo)
     this.gl.clearColor(0.53, 0.81, 0.92, 1.0);
@@ -156,45 +176,51 @@ export class EscenaGrafica implements EscenaJuego {
     this.gl.bindVertexArray(this.vaoSuelo);
     this.ff.drawElements(this.gl.TRIANGLES, this.numIndicesSuelo, this.gl.UNSIGNED_SHORT, 0);
 
-    // --- 1. Definimos primero el nodo de desplazamiento horizontal (Raíz de la máquina) ---
+    // definimos primero el nodo de desplazamiento horizontal 
     const modelDesplazamientoX = mat4.create();
     mat4.translate(modelDesplazamientoX, modelDesplazamientoX, [this.desplazamientoX, 1.0, 0]);
 
-    // --- 2. Base de la torreta (Ahora clona el desplazamiento X para que toda la base se mueva con las teclas A y D) ---
+    // base de la torreta 
     const modelBase = mat4.clone(modelDesplazamientoX);
     mat4.translate(modelBase, modelBase, [0, -0.5, 0]); 
     this.ff.setModelMatrix(modelBase);
-    this.ff.setColor([0.25, 0.25, 0.25]);
+    this.ff.setColor(this.colorTanque); 
     this.gl.bindVertexArray(this.vaoBaseTorreta);
     this.ff.drawElements(this.gl.TRIANGLES, this.numIndicesBase, this.gl.UNSIGNED_SHORT, 0);
 
-    // --- 3. Torreta superior (hereda directamente el desplazamiento X) ---
-    this.ff.setModelMatrix(modelDesplazamientoX);
-    this.ff.setColor([0.35, 0.35, 0.35]);
+    // torreta superior 
+    const modelEsfera = mat4.clone(modelDesplazamientoX);
+    mat4.translate(modelEsfera, modelEsfera, [0, 0.5, 0]); 
+    this.ff.setModelMatrix(modelEsfera);
+    this.ff.setColor(this.colorDomo); // gris un poco más claro para diferenciar visualmente
     this.gl.bindVertexArray(this.vaoTorretaSuperior);
     this.ff.drawElements(this.gl.TRIANGLES, this.numIndicesTorreta, this.gl.UNSIGNED_SHORT, 0);
 
     // nodo de elevación (hijo del desplazamiento X)
+    // el pivote está en el frente de torreta superior para que el cañón nazca de ahí
     const modelElevacion = mat4.clone(modelDesplazamientoX);
-    mat4.translate(modelElevacion, modelElevacion, [0, 0.5, 0.5]); // pivote
+    mat4.translate(modelElevacion, modelElevacion, [0, 0.5, -0.75]); 
     mat4.rotateX(modelElevacion, modelElevacion, this.inclinacionCanonRad);
 
     // cañón
     this.ff.setModelMatrix(modelElevacion);
-    this.ff.setColor([0.2, 0.2, 0.2]);
+    this.ff.setColor(this.colorTanque); 
     this.gl.bindVertexArray(this.vaoCanon);
     this.ff.drawElements(this.gl.TRIANGLES, this.numIndicesCanon, this.gl.UNSIGNED_SHORT, 0);
 
-    // indicador de fuerza
+    // indicador de fuerza que fijamos del bloque
+    const modelIndicador = mat4.clone(modelBase);
+    mat4.translate(modelIndicador, modelIndicador, [0, 0.2, 1.02]); 
+
     for (let i = 0; i < 3; i++) {
-      const modelBarra = mat4.clone(modelElevacion);
-      mat4.translate(modelBarra, modelBarra, [0, 0.8 + i * 0.25, 0.2]); 
-      this.ff.setModelMatrix(modelBarra);
+      const modelBarra = mat4.clone(modelIndicador);
+      mat4.translate(modelBarra, modelBarra, [0, i * 0.2, 0]); // apiladas hacia arriba
       
+      this.ff.setModelMatrix(modelBarra);
       if (i < this.nivelFuerzaActual) {
-        this.ff.setColor([0.5, 1.0, 0.5]); 
+        this.ff.setColor([0.5, 1.0, 0.5]); // verde claro
       } else {
-        this.ff.setColor([0.1, 0.4, 0.1]); 
+        this.ff.setColor([0.1, 0.4, 0.1]); // verde oscuro
       }
       
       this.gl.bindVertexArray(this.vaoIndicador[i]);
@@ -206,11 +232,12 @@ export class EscenaGrafica implements EscenaJuego {
     if (this.proyectilActivo) {
       mat4.translate(modelProyectil, modelProyectil, this.posicionProyectil);
     } else {
+      // copiamos la matriz del cañón y la movemos un poco más allá de la punta para que se vea liso
       mat4.copy(modelProyectil, modelElevacion);
-      mat4.translate(modelProyectil, modelProyectil, [0, 0, -3.0]); 
+      mat4.translate(modelProyectil, modelProyectil, [0, 0, -2.15]); 
     }
     this.ff.setModelMatrix(modelProyectil);
-    this.ff.setColor([0.0, 0.0, 0.0]); 
+    this.ff.setColor([0.0, 0.0, 0.0]); // bala negra
     this.gl.bindVertexArray(this.vaoProyectil);
     this.ff.drawElements(this.gl.TRIANGLES, this.numIndicesProyectil, this.gl.UNSIGNED_SHORT, 0);
 

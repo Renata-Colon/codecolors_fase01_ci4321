@@ -1,4 +1,5 @@
 // main
+
 // importaciones
 import { EstadoJuego, PuntaCanon } from './tipos';
 import { configurarCamara, MatricesCamara } from './camara';
@@ -10,10 +11,11 @@ import { EscenaGrafica } from './escena';
 // contrato de la escena
 export interface EscenaJuego {
   obtenerPuntaCanon: () => PuntaCanon;
-  fijarTransformacionTorreta: (giro: number, inclinacion: number) => void;
+  fijarTransformacionTorreta: (desplazamiento: number, inclinacion: number) => void;
   fijarIndicadorFuerza: (nivel: 1 | 2 | 3) => void;
   fijarTransformacionProyectil: (posicion: [number, number, number], activo: boolean) => void;
   obtenerPosicionesObjetivos: () => { id: number; posicion: [number, number, number]; radio: number }[];
+  actualizarObjetivos: (objetivos: any[]) => void; // <-- nuevo: para que la escena sepa cuando un objetivo fue destruido por la física
   renderizar: (matrizVista: Float32Array, matrizProyeccion: Float32Array) => void;
 }
 
@@ -35,14 +37,14 @@ export class OrquestadorJuego {
 
     // estado inicial del juego
     this.estado = {
-      desplazamientoX: 0, // <-- Cambiado de giroTorreta: 0
+      desplazamientoX: 0, 
       inclinacionCanon: 30,
       nivelFuerza: 1,
       proyectil: {
         activo: false,
         posicion: [0, 0, 0],
         velocidad: [0, 0, 0],
-        radio: 0.4,
+        radio: 0.25, // <-- ajustado a 0.25 para que coincida con el tamaño visual de la bala en la escena y las colisiones sean precisas
       },
       // mapeamos los objetivos que devuelve la escena para tener su estado vivo
       objetivos: this.escena.obtenerPosicionesObjetivos().map((t) => ({ ...t, vivo: true })),
@@ -72,6 +74,9 @@ export class OrquestadorJuego {
 
     // fase 2: actualizar (física y estado)
     this.fisica.actualizar(this.estado, dt);
+
+    // sincronizar el estado de los objetivos con la escena (para que desaparezcan visualmente al ser golpeados)
+    this.escena.actualizarObjetivos(this.estado.objetivos);
 
     // sincronizar: le pasa a la escena los nuevos valores para que dibuje en la posición correcta
     this.escena.fijarTransformacionTorreta(this.estado.desplazamientoX, this.estado.inclinacionCanon);
@@ -114,5 +119,4 @@ window.addEventListener('DOMContentLoaded', () => {
   
   (window as any).juego.iniciar();
 });
-
 

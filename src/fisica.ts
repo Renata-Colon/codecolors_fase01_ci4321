@@ -34,9 +34,9 @@ export class MotorFisico {
     proj.posicion[1] += proj.velocidad[1] * dt;
     proj.posicion[2] += proj.velocidad[2] * dt;
 
-    // 3. Colision con el suelo (Y <= 0)
-    if (proj.posicion[1] <= 0) {
-      proj.posicion[1] = 0;
+    // 3. colision con el suelo (se detiene justo en su radio para no hundirse)
+    if (proj.posicion[1] <= proj.radio) {
+      proj.posicion[1] = proj.radio;
       proj.activo = false;
       return;
     }
