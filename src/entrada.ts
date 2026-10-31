@@ -4,16 +4,19 @@ export class ManejadorEntrada {
   private teclas: { [key: string]: boolean } = {};
   public disparoSolicitado = false;
   private cambioFuerzaSolicitado = false;
+  public reinicioSolicitado = false; // <-- bandera para reiniciar
   private referenciaEstado!: EstadoJuego;
 
   constructor() {
     window.addEventListener('keydown', (e) => {
-      if (e.code === 'Space') e.preventDefault(); // Evita scroll en la pagina
+      if (e.code === 'Space'|| e.code.startsWith('Arrow')) e.preventDefault(); // Evita scroll en la pagina tanto con space 
+      										// como con las teclas que tienen flechas
       
       // Acciones de pulsacion unica (ignoran e.repeat)
       if (!e.repeat) {
         if (e.code === 'Space') this.disparoSolicitado = true;
         if (e.code === 'KeyF') this.cambioFuerzaSolicitado = true;
+        if (e.code === 'KeyR') this.reinicioSolicitado = true; // 
         if (e.code === 'Digit1' || e.code === 'Numpad1') if (this.referenciaEstado) this.referenciaEstado.nivelFuerza = 1;
         if (e.code === 'Digit2' || e.code === 'Numpad2') if (this.referenciaEstado) this.referenciaEstado.nivelFuerza = 2;
         if (e.code === 'Digit3' || e.code === 'Numpad3') if (this.referenciaEstado) this.referenciaEstado.nivelFuerza = 3;
@@ -34,7 +37,6 @@ export class ManejadorEntrada {
   public procesarEntrada(dt: number): void {
     if (!this.referenciaEstado) return;
     
-    //const VELOCIDAD_GIRO = 50;   // grados / segundo
     const VELOCIDAD_INCLINACION = 30; // grados / segundo
 
     // Desplazamiento Horizontal (A / D o Flechas)
@@ -47,7 +49,7 @@ export class ManejadorEntrada {
        this.referenciaEstado.desplazamientoX += VELOCIDAD_MOVIMIENTO * dt;
     }
 
-    // Límite estricto absoluto para que NUNCA pase de -60 ni de 60
+    // Límite estricto absoluto para que NUNCA pase de -10 ni de 10
     this.referenciaEstado.desplazamientoX = Math.max(-10, Math.min(10, this.referenciaEstado.desplazamientoX));
 
     // Elevacion Vertical (W / S o Flechas) dentro de limites (5 a 90)

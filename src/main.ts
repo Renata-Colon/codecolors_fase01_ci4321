@@ -28,6 +28,7 @@ export class OrquestadorJuego {
   private escena: EscenaJuego;
   private ultimoTiempo: number | null = null;
   private readonly DT_MAXIMO = 0.1; // evita saltos brutales si la pestaña se pone en segundo plano
+  private reiniciandoPendiente = false; // <-- Bandera para evitar múltiples reinicios simultáneos
 
   constructor(canvas: HTMLCanvasElement, escena: EscenaJuego) {
     this.escena = escena;
@@ -57,6 +58,27 @@ export class OrquestadorJuego {
     requestAnimationFrame(this.bucle.bind(this));
   }
 
+  public reiniciar(): void {
+    this.reiniciandoPendiente = false;
+    this.estado.desplazamientoX = 0; 
+    this.estado.inclinacionCanon = 30;
+    this.estado.nivelFuerza = 1;
+    this.estado.proyectil = {
+      activo: false,
+      posicion: [0, 0, 0],
+      velocidad: [0, 0, 0],
+      radio: 0.25,
+    };
+    this.estado.objetivos = this.escena.obtenerPosicionesObjetivos().map((t) => ({ ...t, vivo: true }));
+
+    // Sincronizar con la escena
+    this.escena.actualizarObjetivos(this.estado.objetivos);
+    this.escena.fijarTransformacionTorreta(this.estado.desplazamientoX, this.estado.inclinacionCanon);
+    this.escena.fijarIndicadorFuerza(this.estado.nivelFuerza);
+    this.escena.fijarTransformacionProyectil(this.estado.proyectil.posicion, this.estado.proyectil.activo);
+  }
+  
+  
   private bucle(ahora: number): void {
     if (this.ultimoTiempo === null) this.ultimoTiempo = ahora;
     
@@ -66,14 +88,28 @@ export class OrquestadorJuego {
 
     // fase 1: procesar entradas
     this.entrada.procesarEntrada(dt);
+    
+    if (this.entrada.reinicioSolicitado) {
+      this.reiniciar();
+      this.entrada.reinicioSolicitado = false;
+    }
+    
     if (this.entrada.disparoSolicitado) {
       const punta = this.escena.obtenerPuntaCanon(); 
       this.fisica.lanzar(this.estado, punta.posicion, punta.adelante);
       this.entrada.disparoSolicitado = false;
     }
-
+    
     // fase 2: actualizar (física y estado)
     this.fisica.actualizar(this.estado, dt);
+
+    const todosDestruidos = this.estado.objetivos.every((obj) => !obj.vivo);
+    if (todosDestruidos && !this.reiniciandoPendiente) {
+      this.reiniciandoPendiente = true;
+      setTimeout(() => {
+        this.reiniciar();
+      }, 1000); // se reinicia el juego despues de 1s si ya se alcanzaron todos los objetivos
+    }
 
     // sincronizar el estado de los objetivos con la escena (para que desaparezcan visualmente al ser golpeados)
     this.escena.actualizarObjetivos(this.estado.objetivos);

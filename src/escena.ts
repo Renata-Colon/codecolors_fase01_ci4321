@@ -154,9 +154,9 @@ export class EscenaGrafica implements EscenaJuego {
 
   public obtenerPosicionesObjetivos(): { id: number; posicion: [number, number, number]; radio: number }[] {
     return [
-      { id: 1, posicion: [4, 1.5, -8], radio: 0.8 },
-      { id: 2, posicion: [-4, 2.0, -10], radio: 0.8 },
-      { id: 3, posicion: [0, 1.0, -12], radio: 0.8 }
+      { id: 1, posicion: [4, 3.0, -12], radio: 0.8 },
+      { id: 2, posicion: [-4, 4.0, -15], radio: 0.8 },
+      { id: 3, posicion: [0, 2.0, -9], radio: 0.8 }
     ];
   }
 
@@ -227,20 +227,59 @@ export class EscenaGrafica implements EscenaJuego {
       this.ff.drawElements(this.gl.TRIANGLES, this.numIndicesIndicador[i], this.gl.UNSIGNED_SHORT, 0);
     }
 
-    // proyectil
+    // proyectil y trayectoria de predicción
     const modelProyectil = mat4.create();
     if (this.proyectilActivo) {
       mat4.translate(modelProyectil, modelProyectil, this.posicionProyectil);
+      this.ff.setModelMatrix(modelProyectil);
+      this.ff.setColor([0.0, 0.0, 0.0]); // bala negra
+      this.gl.bindVertexArray(this.vaoProyectil);
+      this.ff.drawElements(this.gl.TRIANGLES, this.numIndicesProyectil, this.gl.UNSIGNED_SHORT, 0);
     } else {
-      // copiamos la matriz del cañón y la movemos un poco más allá de la punta para que se vea liso
+      // Bala estática saliendo del cañón cuando no se ha disparado
       mat4.copy(modelProyectil, modelElevacion);
       mat4.translate(modelProyectil, modelProyectil, [0, 0, -2.15]); 
-    }
-    this.ff.setModelMatrix(modelProyectil);
-    this.ff.setColor([0.0, 0.0, 0.0]); // bala negra
-    this.gl.bindVertexArray(this.vaoProyectil);
-    this.ff.drawElements(this.gl.TRIANGLES, this.numIndicesProyectil, this.gl.UNSIGNED_SHORT, 0);
+      this.ff.setModelMatrix(modelProyectil);
+      this.ff.setColor([0.0, 0.0, 0.0]); // bala negra
+      this.gl.bindVertexArray(this.vaoProyectil);
+      this.ff.drawElements(this.gl.TRIANGLES, this.numIndicesProyectil, this.gl.UNSIGNED_SHORT, 0);
 
+      // --- TRAYECTORIA PREDICHA (Se dibuja solo cuando la bola NO está en el aire) ---
+      const punta = this.obtenerPuntaCanon();
+      
+      // Magnitudes de fuerza exactas de fisica.ts
+      const magnitudesFuerza: Record<1 | 2 | 3, number> = { 1: 15.0, 2: 25.0, 3: 35.0 };
+      const velocidadMag = magnitudesFuerza[this.nivelFuerzaActual];
+      
+      let p: [number, number, number] = [...punta.posicion];
+      let vel: [number, number, number] = [
+        punta.adelante[0] * velocidadMag,
+        punta.adelante[1] * velocidadMag,
+        punta.adelante[2] * velocidadMag
+      ];
+      
+      const dtSim = 0.05; // Cada bolita de la estela avanza 0.05 segundos en el futuro respecto a la anterior para formar una curva suave
+      const GRAVEDAD = -9.81; // Gravedad negativa exacta a fisica.ts
+
+      for (let i = 0; i < 40; i++) {
+        vel[1] += GRAVEDAD * dtSim;
+        p[0] += vel[0] * dtSim;
+        p[1] += vel[1] * dtSim;
+        p[2] += vel[2] * dtSim;
+
+        if (p[1] <= 0) break; // Si toca el suelo, detenemos la predicción
+
+        const modelPunto = mat4.create();
+        mat4.translate(modelPunto, modelPunto, p);
+        mat4.scale(modelPunto, modelPunto, [0.3, 0.3, 0.3]); // Reutilizamos la esfera al 30% del tamaño
+
+        this.ff.setModelMatrix(modelPunto);
+        this.ff.setColor([0.2, 0.2, 0.2]); // Gris oscuro para la guía
+        this.gl.bindVertexArray(this.vaoProyectil);
+        this.ff.drawElements(this.gl.TRIANGLES, this.numIndicesProyectil, this.gl.UNSIGNED_SHORT, 0);
+      }
+    }
+    
     // objetivos
     for (let i = 0; i < 3; i++) {
       if (this.objetivosVivos[i]) {
