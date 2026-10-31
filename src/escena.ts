@@ -34,7 +34,7 @@ export class EscenaGrafica implements EscenaJuego {
   private proyectilActivo = false;
   private objetivosVivos = [true, true, true];
 
-  // colores de la torreta (la superior un poco más clara para diferenciarla)
+  // colores unificados para el tanque gris oscuro
   private readonly colorTanque: [number, number, number] = [0.3, 0.3, 0.3];
   private readonly colorDomo: [number, number, number] = [0.45, 0.45, 0.45];
 
@@ -45,6 +45,9 @@ export class EscenaGrafica implements EscenaJuego {
   }
 
   // función auxiliar porque la librería ff no tiene createVAO y hay que hacerlo a mano con webgl2
+  private vaoMontanas: WebGLVertexArrayObject | null = null;
+  private numIndicesMontanas = 0;
+  
   private crearVAO(posiciones: Float32Array, indices: Uint16Array): WebGLVertexArrayObject {
     const vao = this.gl.createVertexArray()!;
     this.gl.bindVertexArray(vao);
@@ -62,39 +65,37 @@ export class EscenaGrafica implements EscenaJuego {
 
   private inicializarGeometria() {
     // aquí llamamos a las funciones de geometria.ts y guardamos los vaos
-    // suelo
     const suelo = geo.crearSuelo();
     this.vaoSuelo = this.crearVAO(suelo.posiciones, suelo.indices);
     this.numIndicesSuelo = suelo.numIndices;
 
-    // base
+    // montañas de fondo
+    const montana = geo.crearMontana();
+    this.vaoMontanas = this.crearVAO(montana.posiciones, montana.indices);
+    this.numIndicesMontanas = montana.numIndices;
+
     const base = geo.crearBaseTorreta();
     this.vaoBaseTorreta = this.crearVAO(base.posiciones, base.indices);
     this.numIndicesBase = base.numIndices;
 
-    // torreta superior
     const torreta = geo.crearTorretaSuperior();
     this.vaoTorretaSuperior = this.crearVAO(torreta.posiciones, torreta.indices);
     this.numIndicesTorreta = torreta.numIndices;
 
-    // cañon
     const canon = geo.crearCanon();
     this.vaoCanon = this.crearVAO(canon.posiciones, canon.indices);
     this.numIndicesCanon = canon.numIndices;
 
-    // bala
     const proyectil = geo.crearEsfera(0.25, 20, 20); 
     this.vaoProyectil = this.crearVAO(proyectil.posiciones, proyectil.indices);
     this.numIndicesProyectil = proyectil.numIndices;
 
-    // esferas objetivo
     for (let i = 0; i < 3; i++) {
       const obj = geo.crearEsfera(0.8, 24, 24); // esferas suaves para los objetivos
       this.vaoObjetivos.push(this.crearVAO(obj.posiciones, obj.indices));
       this.numIndicesObjetivos.push(obj.numIndices);
     }
 
-    // indicador de fuerza
     for (let i = 0; i < 3; i++) {
       const barra = geo.crearBarraIndicador();
       this.vaoIndicador.push(this.crearVAO(barra.posiciones, barra.indices));
@@ -105,11 +106,11 @@ export class EscenaGrafica implements EscenaJuego {
   public obtenerPuntaCanon(): PuntaCanon {
     const LARGO_CANON = 2.0; 
     
-    // lógica de desplazamiento en X
+    // mantenemos la lógica de desplazamiento en X
     const modelDesplazamientoX = mat4.create();
     mat4.translate(modelDesplazamientoX, modelDesplazamientoX, [this.desplazamientoX, 1.0, 0]);
 
-    // el cañón está en el frente de la torreta superior
+    // el pivote del cañón está en el frente del domo (Y=0.5, Z=-0.75)
     const modelElevacion = mat4.clone(modelDesplazamientoX);
     mat4.translate(modelElevacion, modelElevacion, [0, 0.5, -0.75]); 
     mat4.rotateX(modelElevacion, modelElevacion, this.inclinacionCanonRad);
@@ -145,13 +146,6 @@ export class EscenaGrafica implements EscenaJuego {
     this.proyectilActivo = activo;
   }
 
-    // método para que la escena se entere cuando la física destruye un objetivo ---nuevoo
-  public actualizarObjetivos(objetivos: any[]): void {
-    for (let i = 0; i < 3; i++) {
-      this.objetivosVivos[i] = objetivos[i].vivo;
-    }
-  }
-
   public obtenerPosicionesObjetivos(): { id: number; posicion: [number, number, number]; radio: number }[] {
     return [
       { id: 1, posicion: [4, 1.5, -8], radio: 0.8 },
@@ -160,27 +154,58 @@ export class EscenaGrafica implements EscenaJuego {
     ];
   }
 
-  // renderizado
+  public actualizarObjetivos(objetivos: any[]): void {
+    // sincronizamos nuestro arreglo local con lo que decidió la física
+    for (let i = 0; i < 3; i++) {
+      this.objetivosVivos[i] = objetivos[i].vivo;
+    }
+  }
+
   public renderizar(matrizVista: Float32Array, matrizProyeccion: Float32Array): void {
-    // limpiar pantalla (azul cielo)
-    this.gl.clearColor(0.53, 0.81, 0.92, 1.0);
+    // limpiar pantalla con tono que recuerde a la lava
+    this.gl.clearColor(0.85, 0.3, 0.05, 1.0);
     this.gl.clear(this.gl.COLOR_BUFFER_BIT | this.gl.DEPTH_BUFFER_BIT);
     this.gl.enable(this.gl.DEPTH_TEST);
 
     this.ff.setProjectionMatrix(matrizProyeccion);
     this.ff.setViewMatrix(matrizVista);
 
-    // suelo
+    // suelo 
     this.ff.setModelMatrix(mat4.create());
-    this.ff.setColor([0.55, 0.27, 0.07]);
+    this.ff.setColor([0.35, 0.25, 0.2]);
     this.gl.bindVertexArray(this.vaoSuelo);
     this.ff.drawElements(this.gl.TRIANGLES, this.numIndicesSuelo, this.gl.UNSIGNED_SHORT, 0);
 
-    // definimos primero el nodo de desplazamiento horizontal 
+    // montañas de fondo 
+    this.ff.setColor([0.2, 0.12, 0.1]);
+    this.gl.bindVertexArray(this.vaoMontanas);
+    
+    // montaña izquierda, más pequeña y lejana
+    const modelMontana1 = mat4.create();
+    mat4.translate(modelMontana1, modelMontana1, [-8, 0, -25]);
+    mat4.scale(modelMontana1, modelMontana1, [0.8, 0.7, 1]);
+    this.ff.setModelMatrix(modelMontana1);
+    this.ff.drawElements(this.gl.TRIANGLES, this.numIndicesMontanas, this.gl.UNSIGNED_SHORT, 0);
+
+    // montaña central, la más grande y cercana
+    const modelMontana2 = mat4.create();
+    mat4.translate(modelMontana2, modelMontana2, [0, 0, -20]);
+    mat4.scale(modelMontana2, modelMontana2, [1.2, 1.0, 1]);
+    this.ff.setModelMatrix(modelMontana2);
+    this.ff.drawElements(this.gl.TRIANGLES, this.numIndicesMontanas, this.gl.UNSIGNED_SHORT, 0);
+
+    // montaña derecha, mediana
+    const modelMontana3 = mat4.create();
+    mat4.translate(modelMontana3, modelMontana3, [9, 0, -23]);
+    mat4.scale(modelMontana3, modelMontana3, [0.9, 0.8, 1]);
+    this.ff.setModelMatrix(modelMontana3);
+    this.ff.drawElements(this.gl.TRIANGLES, this.numIndicesMontanas, this.gl.UNSIGNED_SHORT, 0);
+
+    // nodo de desplazamiento horizontal, base del tanque
     const modelDesplazamientoX = mat4.create();
     mat4.translate(modelDesplazamientoX, modelDesplazamientoX, [this.desplazamientoX, 1.0, 0]);
 
-    // base de la torreta 
+    // base de la torreta
     const modelBase = mat4.clone(modelDesplazamientoX);
     mat4.translate(modelBase, modelBase, [0, -0.5, 0]); 
     this.ff.setModelMatrix(modelBase);
@@ -192,12 +217,11 @@ export class EscenaGrafica implements EscenaJuego {
     const modelEsfera = mat4.clone(modelDesplazamientoX);
     mat4.translate(modelEsfera, modelEsfera, [0, 0.5, 0]); 
     this.ff.setModelMatrix(modelEsfera);
-    this.ff.setColor(this.colorDomo); // gris un poco más claro para diferenciar visualmente
+    this.ff.setColor(this.colorDomo); 
     this.gl.bindVertexArray(this.vaoTorretaSuperior);
     this.ff.drawElements(this.gl.TRIANGLES, this.numIndicesTorreta, this.gl.UNSIGNED_SHORT, 0);
 
     // nodo de elevación (hijo del desplazamiento X)
-    // el pivote está en el frente de torreta superior para que el cañón nazca de ahí
     const modelElevacion = mat4.clone(modelDesplazamientoX);
     mat4.translate(modelElevacion, modelElevacion, [0, 0.5, -0.75]); 
     mat4.rotateX(modelElevacion, modelElevacion, this.inclinacionCanonRad);
@@ -208,47 +232,53 @@ export class EscenaGrafica implements EscenaJuego {
     this.gl.bindVertexArray(this.vaoCanon);
     this.ff.drawElements(this.gl.TRIANGLES, this.numIndicesCanon, this.gl.UNSIGNED_SHORT, 0);
 
-    // indicador de fuerza que fijamos del bloque
+    // indicador de fuerza
     const modelIndicador = mat4.clone(modelBase);
     mat4.translate(modelIndicador, modelIndicador, [0, 0.2, 1.02]); 
 
     for (let i = 0; i < 3; i++) {
       const modelBarra = mat4.clone(modelIndicador);
-      mat4.translate(modelBarra, modelBarra, [0, i * 0.2, 0]); // apiladas hacia arriba
+      mat4.translate(modelBarra, modelBarra, [0, i * 0.2, 0]); 
       
       this.ff.setModelMatrix(modelBarra);
       if (i < this.nivelFuerzaActual) {
-        this.ff.setColor([0.5, 1.0, 0.5]); // verde claro
+        this.ff.setColor([0.2, 0.6, 1.0]); // azul eléctrico para encendido
       } else {
-        this.ff.setColor([0.1, 0.4, 0.1]); // verde oscuro
+        this.ff.setColor([0.05, 0.1, 0.3]); // azul oscuro para apagado
       }
       
       this.gl.bindVertexArray(this.vaoIndicador[i]);
       this.ff.drawElements(this.gl.TRIANGLES, this.numIndicesIndicador[i], this.gl.UNSIGNED_SHORT, 0);
     }
 
-    // proyectil
+    // proyectil azul
     const modelProyectil = mat4.create();
     if (this.proyectilActivo) {
       mat4.translate(modelProyectil, modelProyectil, this.posicionProyectil);
     } else {
-      // copiamos la matriz del cañón y la movemos un poco más allá de la punta para que se vea liso
       mat4.copy(modelProyectil, modelElevacion);
       mat4.translate(modelProyectil, modelProyectil, [0, 0, -2.15]); 
     }
     this.ff.setModelMatrix(modelProyectil);
-    this.ff.setColor([0.0, 0.0, 0.0]); // bala negra
+    this.ff.setColor([0.3, 0.7, 1.0]); 
     this.gl.bindVertexArray(this.vaoProyectil);
     this.ff.drawElements(this.gl.TRIANGLES, this.numIndicesProyectil, this.gl.UNSIGNED_SHORT, 0);
 
-    // objetivos
+    // objetivos 
     for (let i = 0; i < 3; i++) {
       if (this.objetivosVivos[i]) {
         const pos = this.obtenerPosicionesObjetivos()[i].posicion;
         const modelObj = mat4.create();
         mat4.translate(modelObj, modelObj, pos);
         this.ff.setModelMatrix(modelObj);
-        this.ff.setColor([1.0, 0.4, 0.1]); 
+        
+        // los dos primeros morados, el otro es verde
+        if (i < 2) {
+          this.ff.setColor([0.5, 0.1, 0.6]); 
+        } else {
+          this.ff.setColor([0.1, 0.8, 0.2]); 
+        }
+
         this.gl.bindVertexArray(this.vaoObjetivos[i]);
         this.ff.drawElements(this.gl.TRIANGLES, this.numIndicesObjetivos[i], this.gl.UNSIGNED_SHORT, 0);
       }
