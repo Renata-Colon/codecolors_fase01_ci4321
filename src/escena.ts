@@ -298,7 +298,7 @@ export class EscenaGrafica implements EscenaJuego {
         mat4.scale(modelPunto, modelPunto, [0.3, 0.3, 0.3]); // Reutilizamos la esfera al 30% del tamaño
 
         this.ff.setModelMatrix(modelPunto);
-        this.ff.setColor([0.2, 0.2, 0.2]); // Puntos grises oscuros de la guía
+        this.ff.setColor([0.3, 0.7, 1.0]); // Puntos azules como el proyectil
         this.gl.bindVertexArray(this.vaoProyectil);
         this.ff.drawElements(this.gl.TRIANGLES, this.numIndicesProyectil, this.gl.UNSIGNED_SHORT, 0);
       }
