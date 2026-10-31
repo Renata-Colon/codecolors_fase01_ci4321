@@ -132,3 +132,16 @@ export function crearBarraIndicador() {
   const indices = new Uint16Array([0, 1, 2, 3, 4, 5]);
   return { posiciones, indices, numIndices: indices.length };
 }
+
+// montaña (triángulo plano visto de frente)
+// usamos un solo triángulo grande para simular una montaña lejana
+export function crearMontana() {
+  const ancho = 10.0, alto = 6.0;
+  const posiciones = new Float32Array([
+    -ancho/2, 0, 0,   // base izquierda
+     ancho/2, 0, 0,   // base derecha
+     0, alto, 0       // punta
+  ]);
+  const indices = new Uint16Array([0, 1, 2]);
+  return { posiciones, indices, numIndices: indices.length };
+}
