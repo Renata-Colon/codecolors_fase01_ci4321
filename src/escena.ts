@@ -146,11 +146,12 @@ export class EscenaGrafica implements EscenaJuego {
     this.proyectilActivo = activo;
   }
 
+  // ponemos los objetivos a diferentes alturas para usar diferentes angulos de disparo
   public obtenerPosicionesObjetivos(): { id: number; posicion: [number, number, number]; radio: number }[] {
     return [
-      { id: 1, posicion: [4, 1.5, -8], radio: 0.8 },
-      { id: 2, posicion: [-4, 2.0, -10], radio: 0.8 },
-      { id: 3, posicion: [0, 1.0, -12], radio: 0.8 }
+      { id: 1, posicion: [-5, 1.0, -10], radio: 0.8 },  
+      { id: 2, posicion: [5, 4.5, -12], radio: 0.8 },   
+      { id: 3, posicion: [0, 7.5, -14], radio: 0.8 }    
     ];
   }
 
@@ -162,6 +163,7 @@ export class EscenaGrafica implements EscenaJuego {
   }
 
   public renderizar(matrizVista: Float32Array, matrizProyeccion: Float32Array): void {
+
     // limpiar pantalla con tono que recuerde a la lava
     this.gl.clearColor(0.85, 0.3, 0.05, 1.0);
     this.gl.clear(this.gl.COLOR_BUFFER_BIT | this.gl.DEPTH_BUFFER_BIT);
