@@ -5,6 +5,7 @@ export class ManejadorEntrada {
   private teclas: { [key: string]: boolean } = {};
   public disparoSolicitado = false;
   private cambioFuerzaSolicitado = false;
+  public reinicioSolicitado = false; // <-- bandera para reiniciar
   private referenciaEstado!: EstadoJuego;
 
   // variables para el movimiento suave (inercia)
@@ -15,12 +16,12 @@ export class ManejadorEntrada {
 
   constructor() {
     window.addEventListener('keydown', (e) => {
-      if (e.code === 'Space') e.preventDefault(); // evita scroll
-      
+      if (e.code === 'Space' || e.code.startsWith('Arrow')) e.preventDefault(); // Evita scroll en la pagina tanto con space como con las teclas que tienen flechas
       // acciones de pulsación única
       if (!e.repeat) {
         if (e.code === 'Space') this.disparoSolicitado = true;
         if (e.code === 'KeyF') this.cambioFuerzaSolicitado = true;
+        if (e.code === 'KeyR') this.reinicioSolicitado = true; // boton reinicio
         if (e.code === 'Digit1' || e.code === 'Numpad1') if (this.referenciaEstado) this.referenciaEstado.nivelFuerza = 1;
         if (e.code === 'Digit2' || e.code === 'Numpad2') if (this.referenciaEstado) this.referenciaEstado.nivelFuerza = 2;
         if (e.code === 'Digit3' || e.code === 'Numpad3') if (this.referenciaEstado) this.referenciaEstado.nivelFuerza = 3;
