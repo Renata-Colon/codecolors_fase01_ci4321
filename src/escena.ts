@@ -164,7 +164,7 @@ export class EscenaGrafica implements EscenaJuego {
 
   public renderizar(matrizVista: Float32Array, matrizProyeccion: Float32Array): void {
 
-    // limpiar pantalla con tono que recuerde a la lava
+    // limpiar pantalla con tono que recuerde a la lava (personalización de tu compañera)
     this.gl.clearColor(0.85, 0.3, 0.05, 1.0);
     this.gl.clear(this.gl.COLOR_BUFFER_BIT | this.gl.DEPTH_BUFFER_BIT);
     this.gl.enable(this.gl.DEPTH_TEST);
@@ -253,18 +253,56 @@ export class EscenaGrafica implements EscenaJuego {
       this.ff.drawElements(this.gl.TRIANGLES, this.numIndicesIndicador[i], this.gl.UNSIGNED_SHORT, 0);
     }
 
-    // proyectil azul
+    // proyectil azul y su trayectoria predicha
     const modelProyectil = mat4.create();
     if (this.proyectilActivo) {
       mat4.translate(modelProyectil, modelProyectil, this.posicionProyectil);
+      this.ff.setModelMatrix(modelProyectil);
+      this.ff.setColor([0.3, 0.7, 1.0]); 
+      this.gl.bindVertexArray(this.vaoProyectil);
+      this.ff.drawElements(this.gl.TRIANGLES, this.numIndicesProyectil, this.gl.UNSIGNED_SHORT, 0);
     } else {
       mat4.copy(modelProyectil, modelElevacion);
       mat4.translate(modelProyectil, modelProyectil, [0, 0, -2.15]); 
+      this.ff.setModelMatrix(modelProyectil);
+      this.ff.setColor([0.3, 0.7, 1.0]); 
+      this.gl.bindVertexArray(this.vaoProyectil);
+      this.ff.drawElements(this.gl.TRIANGLES, this.numIndicesProyectil, this.gl.UNSIGNED_SHORT, 0);
+
+      // --- TRAYECTORIA PREDICHA INTEGRADA ---
+      const punta = this.obtenerPuntaCanon();
+      
+      const magnitudesFuerza: Record<1 | 2 | 3, number> = { 1: 15.0, 2: 25.0, 3: 35.0 };
+      const velocidadMag = magnitudesFuerza[this.nivelFuerzaActual];
+      
+      let p: [number, number, number] = [...punta.posicion];
+      let vel: [number, number, number] = [
+        punta.adelante[0] * velocidadMag,
+        punta.adelante[1] * velocidadMag,
+        punta.adelante[2] * velocidadMag
+      ];
+      
+      const dtSim = 0.05; 
+      const GRAVEDAD = -9.81; 
+
+      for (let i = 0; i < 30; i++) {
+        p[0] += vel[0] * dtSim;
+        p[1] += vel[1] * dtSim;
+        p[2] += vel[2] * dtSim;
+        vel[1] += GRAVEDAD * dtSim;
+
+        if (p[1] <= 0) break; 
+
+        const modelPunto = mat4.create();
+        mat4.translate(modelPunto, modelPunto, p);
+        mat4.scale(modelPunto, modelPunto, [0.3, 0.3, 0.3]); // Reutilizamos la esfera al 30% del tamaño
+
+        this.ff.setModelMatrix(modelPunto);
+        this.ff.setColor([0.3, 0.7, 1.0]); // Puntos azules como el proyectil
+        this.gl.bindVertexArray(this.vaoProyectil);
+        this.ff.drawElements(this.gl.TRIANGLES, this.numIndicesProyectil, this.gl.UNSIGNED_SHORT, 0);
+      }
     }
-    this.ff.setModelMatrix(modelProyectil);
-    this.ff.setColor([0.3, 0.7, 1.0]); 
-    this.gl.bindVertexArray(this.vaoProyectil);
-    this.ff.drawElements(this.gl.TRIANGLES, this.numIndicesProyectil, this.gl.UNSIGNED_SHORT, 0);
 
     // objetivos 
     for (let i = 0; i < 3; i++) {
@@ -274,11 +312,10 @@ export class EscenaGrafica implements EscenaJuego {
         mat4.translate(modelObj, modelObj, pos);
         this.ff.setModelMatrix(modelObj);
         
-        // los dos primeros morados, el otro es verde
         if (i < 2) {
-          this.ff.setColor([0.5, 0.1, 0.6]); 
+          this.ff.setColor([0.5, 0.1, 0.6]); // Morados
         } else {
-          this.ff.setColor([0.1, 0.8, 0.2]); 
+          this.ff.setColor([0.1, 0.8, 0.2]); // Verde
         }
 
         this.gl.bindVertexArray(this.vaoObjetivos[i]);

@@ -14,7 +14,7 @@ export function configurarCamara(relacionAspecto: number): MatricesCamara {
   // 1. Matriz de Vista (LookAt): Colocada atras y arriba, mirando hacia la torreta y objetivos
   const vista = mat4.lookAt(
     mat4.create(),
-    [0, 8, 18],   // Posicion de la camara 
+    [0, 12, 18],   // Posicion de la camara 
     [0, 2, -10],  // Punto al que mira 
     [0, 1, 0]     // Vector hacia arriba 
   );
