@@ -39,7 +39,7 @@ export class OrquestadorJuego {
     // estado inicial del juego
     this.estado = {
       desplazamientoX: 0, 
-      inclinacionCanon: 30,
+      inclinacionCanon: 45,
       nivelFuerza: 1,
       proyectil: {
         activo: false,
@@ -61,7 +61,7 @@ export class OrquestadorJuego {
   public reiniciar(): void {
     this.reiniciandoPendiente = false;
     this.estado.desplazamientoX = 0; 
-    this.estado.inclinacionCanon = 30;
+    this.estado.inclinacionCanon = 45;
     this.estado.nivelFuerza = 1;
     this.estado.proyectil = {
       activo: false,
