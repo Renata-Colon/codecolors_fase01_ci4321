@@ -18,7 +18,7 @@ export interface Proyectil {
 }
 
 export interface EstadoJuego {
-  desplazamientoX: number; // <-- Cambiado de giroTorreta a desplazamientoX
+  desplazamientoX: number; 
   inclinacionCanon: number;
   nivelFuerza: 1 | 2 | 3;
   proyectil: Proyectil;
