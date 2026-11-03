@@ -15,7 +15,7 @@ export interface EscenaJuego {
   fijarIndicadorFuerza: (nivel: 1 | 2 | 3) => void;
   fijarTransformacionProyectil: (posicion: [number, number, number], activo: boolean) => void;
   obtenerPosicionesObjetivos: () => { id: number; posicion: [number, number, number]; radio: number }[];
-  actualizarObjetivos: (objetivos: any[]) => void; // <-- nuevo: para que la escena sepa cuando un objetivo fue destruido por la física
+  actualizarObjetivos: (objetivos: any[]) => void; // para que la escena sepa cuando un objetivo fue destruido por la física
   renderizar: (matrizVista: Float32Array, matrizProyeccion: Float32Array) => void;
 }
 
@@ -28,7 +28,7 @@ export class OrquestadorJuego {
   private escena: EscenaJuego;
   private ultimoTiempo: number | null = null;
   private readonly DT_MAXIMO = 0.1; // evita saltos brutales si la pestaña se pone en segundo plano
-  private reiniciandoPendiente = false; // <-- Bandera para evitar múltiples reinicios simultáneos
+  private reiniciandoPendiente = false; // bandera para evitar múltiples reinicios simultáneos
 
   constructor(canvas: HTMLCanvasElement, escena: EscenaJuego) {
     this.escena = escena;
@@ -45,7 +45,7 @@ export class OrquestadorJuego {
         activo: false,
         posicion: [0, 0, 0],
         velocidad: [0, 0, 0],
-        radio: 0.25, // <-- ajustado a 0.25 para que coincida con el tamaño visual de la bala en la escena y las colisiones sean precisas
+        radio: 0.25, 
       },
       // mapeamos los objetivos que devuelve la escena para tener su estado vivo
       objetivos: this.escena.obtenerPosicionesObjetivos().map((t) => ({ ...t, vivo: true })),
@@ -82,7 +82,7 @@ export class OrquestadorJuego {
   private bucle(ahora: number): void {
     if (this.ultimoTiempo === null) this.ultimoTiempo = ahora;
     
-    // cálculo del delta time (dt) en segundos para que la física sea independiente del framerate
+    // cálculo del delta time en segundos para que la física sea independiente del framerate
     const dt = Math.min((ahora - this.ultimoTiempo) / 1000.0, this.DT_MAXIMO);
     this.ultimoTiempo = ahora;
 
