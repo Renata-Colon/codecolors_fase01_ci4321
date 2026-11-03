@@ -5,18 +5,14 @@ export class ManejadorEntrada {
   private teclas: { [key: string]: boolean } = {};
   public disparoSolicitado = false;
   private cambioFuerzaSolicitado = false;
-  public reinicioSolicitado = false; // <-- bandera para reiniciar
+  public reinicioSolicitado = false; // bandera para reiniciar 
   private referenciaEstado!: EstadoJuego;
-
-  // variables para el movimiento suave (inercia)
-  private velocidadX = 0;
-  private velocidadInclinacion = 0;
-  private readonly ACELERACION = 25; // qué tan rápido agarra velocidad
-  private readonly FRICCION = 0.85;  // qué tanto se desliza al soltar (más bajo = frena antes)
 
   constructor() {
     window.addEventListener('keydown', (e) => {
-      if (e.code === 'Space' || e.code.startsWith('Arrow')) e.preventDefault(); // Evita scroll en la pagina tanto con space como con las teclas que tienen flechas
+      // evita scroll en la pagina tanto con space como con las teclas que tienen flechas
+      if (e.code === 'Space' || e.code.startsWith('Arrow')) e.preventDefault(); 
+      
       // acciones de pulsación única
       if (!e.repeat) {
         if (e.code === 'Space') this.disparoSolicitado = true;
@@ -38,8 +34,6 @@ export class ManejadorEntrada {
     // para que el tanque no se quede yéndose solo hacia la pared infinitamente
     window.addEventListener('blur', () => {
       this.teclas = {};
-      this.velocidadX = 0;
-      this.velocidadInclinacion = 0;
     });
   }
 
@@ -53,19 +47,13 @@ export class ManejadorEntrada {
     const VELOCIDAD_INCLINACION = 30; 
     const VELOCIDAD_MOVIMIENTO = 8;  
 
-    // movimiento horizontal con inercia
+    // desplazamiento horizontal 
     if (this.teclas['KeyA'] || this.teclas['ArrowLeft']) {
-       this.velocidadX -= this.ACELERACION * dt;
+       this.referenciaEstado.desplazamientoX -= VELOCIDAD_MOVIMIENTO * dt;
     }
     if (this.teclas['KeyD'] || this.teclas['ArrowRight']) {
-       this.velocidadX += this.ACELERACION * dt;
+       this.referenciaEstado.desplazamientoX += VELOCIDAD_MOVIMIENTO * dt;
     }
-
-    // aplicar fricción para que se deslice suave al soltar la tecla
-    this.velocidadX *= this.FRICCION;
-    
-    // actualizar la posición real con la velocidad acumulada
-    this.referenciaEstado.desplazamientoX += this.velocidadX * dt;
 
     // límite estricto para que no se salga del mapa
     this.referenciaEstado.desplazamientoX = Math.max(-10, Math.min(10, this.referenciaEstado.desplazamientoX));
