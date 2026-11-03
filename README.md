@@ -1,62 +1,50 @@
-# Rotating Cube: FixedFunction and a game loop
+# CodeColors - Proyecto, Fase 01: CI4321 (Sep - Dic 2026)
 
-A yellow cube rotates on the Y axis. One directional light shines on it. The example uses the FixedFunction (FF) module, so no shader code appears in the example. The code shows the game loop that drives the animation.
+## Integrantes del equipo CodeColors
+- Renata Colón
+- Alejandra Mármol
 
-## Requirements
+## ¿En qué consiste la entrega?
+Se trata de las funcionalidades e implementaciones básicas de un juego de artillería en 3D con temática del Mundo de Bowser. En este, el jugador controlará una especie de cañón con el objetivo de destruir esferas flotantes calculando la trayectoria, el ángulo de elevación y la fuerza del disparo. 
 
-- Node.js 18 or later (tested with Node 24)
-- npm
-- A browser with WebGL2 support
+El proyecto implementa un **árbol de escena jerárquico** utilizando matrices de transformación, donde los componentes del tanque (base inferior, base superior, cañón y proyectil) heredan las transformaciones de sus nodos padres.
 
-## Run
+## Instrucciones para correr el proyecto
 
-1. Install the dependencies. This is the only step that needs a network connection.
-
+1. Asegúrese de tener [Node.js](https://nodejs.org/) instalado en su computadora.
+2. Clone este repositorio (o descargue el código fuente).
+3. Abra una terminal en la carpeta raíz del proyecto.
+4. Instale las dependencias ejecutando:
+   ```bash
+   npm install 
    ```
-   npm install
-   ```
-
-2. Start the development server.
-
-   ```
+5. Inicie el servidor con:
+   ```bash
    npm run dev
    ```
+6. Abra su navegador y vaya a la dirección que indica la terminal (por lo general es http://localhost:5173)
+7. Disfrute:)
 
-3. Open `http://localhost:5173` in your browser.
+## Controles del juego
+| Tecla | Acción |
+| :--- | :--- |
+| **`A` / `D`** o **`Flecha Izq.` / `Flecha Der.`** | Desplazan el tanque horizontalmente |
+| **`W` / `S`** o **`Flecha Arriba` / `Flecha Abajo`** | Elevar o bajar la inclinación del cañón |
+| **`Espacio`** | Disparar el proyectil |
+| **`F`** | Cambiar el nivel de fuerza de 1 en 1 |
+| **`1`, `2`, `3`** | Seleccionar directamente el nivel de fuerza |
 
-## Use
+## Arquitectura de esta fase
+El código está organizado dentro de la carpeta `src/`, separando claramente las responsabilidades para mantener la lógica del juego desacoplada de los gráficos:
 
-- Press `Space` to change the cube color. The color cycles yellow → cyan → magenta → yellow.
-- Press `R` to stop or restart the rotation.
-- Holding a key counts as one press. Key auto-repeat is ignored.
+- **`main.ts`**: es el punto de entrada y orquestador principal. Este inicializa el contexto WebGL y sincroniza la física con la escena.
+- **`escena.ts`**: responsable exclusivo de los gráficos, es quien maneja los VAOs de WebGL2, el árbol de escena jerárquico y el renderizado de las primitivas.
+- **`fisica.ts`**: motor de física independiente; calcula la trayectoria parabólica, la gravedad y la detección de colisiones.
+- **`entrada.ts`**: manejador de eventos. Captura el teclado, previene el scroll del navegador y gestiona los controles del jugador.
+- **`geometria.ts`**: generador de mallas que contiene las funciones matemáticas para la creación de las primitivas.
+- **`camara.ts`**: configuración de la cámara, este genera y actualiza las matrices de Vista y Proyección.
+- **`tipos.ts`**: contratos e interfaces donde se definen las estructuras de datos compartidas que comunican la lógica con la vista.
+- **`constants.ts`**: son las constantes globales del juego (como colores base, dimensiones del canvas, etc.).
+- **`style.css`**: los estilos básicos para el contenedor del canvas y la interfaz.
+- **`vendor/ff/`**: librería *FixedFunction* (proporcionada por el profe). 
 
-## Game loop
-
-Each frame runs three steps in this order:
-
-1. `processInput` handles the `Space` and `R` presses recorded since the last frame.
-2. `update(dt)` changes the rotation angle.
-3. `render` draws the scene.
-
-`dt` is the time since the last frame, in seconds. The value is clamped to 0.1 s. A hidden tab does not make the cube jump when the tab becomes visible again. The rotation speed is in radians per second. The cube turns at the same speed on a 60 Hz display and on a 120 Hz display.
-
-## Other commands
-
-| Command           | Action                                          |
-| ----------------- | ----------------------------------------------- |
-| `npm run build`   | Type-check with `tsc` and build to `dist/`      |
-| `npm run preview` | Serve the built `dist/` folder locally          |
-
-## Project layout
-
-```
-index.html                 page markup
-src/main.ts                WebGL setup, the game loop, and the canvas
-src/constants.ts           geometry, colors, and clear color (#1b1e2b)
-src/vendor/ff/             FF v1.0 (read only; do not edit)
-```
-
-## Troubleshooting
-
-- **Blank page or "WebGL2 is not available."** Enable hardware acceleration in the browser, or try another browser.
-- **Port 5173 is in use.** Stop the other process, or run `npx vite --port 3000`.
