@@ -164,7 +164,7 @@ export class EscenaGrafica implements EscenaJuego {
 
   public renderizar(matrizVista: Float32Array, matrizProyeccion: Float32Array): void {
 
-    // limpiar pantalla con tono que recuerde a la lava (personalización de tu compañera)
+    // limpiar pantalla con tono que recuerde a la lava 
     this.gl.clearColor(0.85, 0.3, 0.05, 1.0);
     this.gl.clear(this.gl.COLOR_BUFFER_BIT | this.gl.DEPTH_BUFFER_BIT);
     this.gl.enable(this.gl.DEPTH_TEST);
@@ -269,7 +269,7 @@ export class EscenaGrafica implements EscenaJuego {
       this.gl.bindVertexArray(this.vaoProyectil);
       this.ff.drawElements(this.gl.TRIANGLES, this.numIndicesProyectil, this.gl.UNSIGNED_SHORT, 0);
 
-      // --- TRAYECTORIA PREDICHA INTEGRADA ---
+      // integración de la predicción de trayectoria 
       const punta = this.obtenerPuntaCanon();
       
       const magnitudesFuerza: Record<1 | 2 | 3, number> = { 1: 15.0, 2: 25.0, 3: 35.0 };
@@ -295,7 +295,7 @@ export class EscenaGrafica implements EscenaJuego {
 
         const modelPunto = mat4.create();
         mat4.translate(modelPunto, modelPunto, p);
-        mat4.scale(modelPunto, modelPunto, [0.3, 0.3, 0.3]); // Reutilizamos la esfera al 30% del tamaño
+        mat4.scale(modelPunto, modelPunto, [0.3, 0.3, 0.3]); // Reutilizamos la esfera 
 
         this.ff.setModelMatrix(modelPunto);
         this.ff.setColor([0.3, 0.7, 1.0]); // Puntos azules como el proyectil
