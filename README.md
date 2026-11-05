@@ -44,7 +44,6 @@ El código está organizado dentro de la carpeta `src/`, separando claramente la
 - **`geometria.ts`**: generador de mallas que contiene las funciones matemáticas para la creación de las primitivas.
 - **`camara.ts`**: configuración de la cámara, este genera y actualiza las matrices de Vista y Proyección.
 - **`tipos.ts`**: contratos e interfaces donde se definen las estructuras de datos compartidas que comunican la lógica con la vista.
-- **`constants.ts`**: son las constantes globales del juego (como colores base, dimensiones del canvas, etc.).
 - **`style.css`**: los estilos básicos para el contenedor del canvas y la interfaz.
 - **`vendor/ff/`**: librería *FixedFunction* (proporcionada por el profe). 
 
